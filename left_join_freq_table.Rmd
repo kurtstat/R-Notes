@@ -1,0 +1,102 @@
+---
+title: "Frequency Table using left_join()"
+author: "Neil Pettinger"
+date: "2025-01-14"
+output: html_document
+---
+
+### Step 0 - install/load the packages
+
+The file we're going to use is an .xlsx files so we'll need {openxlsx} as well as the {tidyverse} suite of packages - though I think we'll only need {dplyr} and {ggplot2} from that suite.
+
+```{r message = FALSE}
+library(openxlsx)
+library(tidyverse)
+library(scales)
+```
+
+### Step 1 - import the data
+
+The raw data file is available for download on the Kurtosis website. I find that with {openxlsx}'s read.xlsx() function, I need to fix the datetimes using the convertToDateTime() function from the same package.
+
+```{r}
+dataframe_01 <-
+  read.xlsx("https://www.kurtosis.co.uk/data/01_ed_data.xlsx") |>  
+  mutate(new_arrival_date_time = convertToDateTime(arrival_date_time)) |> 
+  mutate(new_departure_date_time = convertToDateTime(departure_date_time)) |> 
+  select(patient_id,
+         new_arrival_date_time,
+         new_departure_date_time,
+         adm_ward)
+```
+
+### Step 2 - create a los_mins variable
+
+I'm using difftime() to do the subtraction arithmetic to get my length of stay variable, but I'm also applying as.numeric() to it to make sure it behaves like a proper number!
+
+I'm also filtering out the three attendances that had length of stay of either less than zero or more than 1440.
+
+```{r}
+dataframe_01a <-
+  dataframe_01 |>
+  mutate(los_mins = as.numeric(difftime(new_departure_date_time,
+                             new_arrival_date_time,
+                             units = "mins"))) |> 
+  filter(los_mins >=0) |> 
+  filter(los_mins <= 1440)
+```
+
+# Step 3 - create a dataframe of bins
+
+Meanwhile, we create a dataframe that contains the upper and lower limits of the bins we want to summarize the raw data into.
+
+```{r}
+dataframe_bins <-
+  data.frame(bin_lower = seq(0, 1380, 60),
+             bin_upper = seq(60, 1440, 60))
+```
+
+#Step 4 - Do a left_join()
+
+Having got the 24x2 bins dataframe in place, we can now attempt a left_join() as our first step to creating the frequency table.
+
+```{r}
+dataframe_01b <-
+  dataframe_01a |> 
+  left_join(dataframe_bins,
+            join_by(los_mins >= bin_lower,
+                    los_mins < bin_upper))
+```
+
+#Step 5 - Now need to group this dataframe...
+
+If we now group this dataframe by the bin_upper variable, we should get a neat summary table.
+
+```{r}
+dataframe_01c <-
+  dataframe_01b |> 
+  group_by(bin_upper) |> 
+  summarize(no_of_attendances = n())
+```
+
+
+#Step 6 - draw a histogram using geom_col()
+
+```{r}
+ggplot(data = dataframe_01c) +
+  aes(x = bin_upper,
+      y = no_of_attendances) +
+  geom_col(width = 60,
+           colour = "white",
+           fill = "blue") +
+  scale_x_continuous(limits = c(0, 1440),
+                     breaks = seq(60, 1440, 60)) +
+  scale_y_continuous(labels = comma) +
+  labs(title = "The Frequency Distribution",
+       subtitle = "Anytown General Hospital",
+       caption = "Source: Patient Management System",
+       x = "Length of stay (minutes)",
+       y = element_blank()) +
+  theme_minimal()
+```
+
