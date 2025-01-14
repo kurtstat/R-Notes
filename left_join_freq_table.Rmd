@@ -7,9 +7,9 @@ output: html_document
 
 ### Step 0 - install/load the packages
 
-The file we're going to use is an .xlsx files so we'll need {openxlsx} as well as the {tidyverse} suite of packages - though I think we'll only need {dplyr} and {ggplot2} from that suite.
+The file we're going to use is an .xlsx files so we'll need {openxlsx} and {scales} as well as the {tidyverse} suite of packages - though I think we'll only need {dplyr} and {ggplot2} from that suite.
 
-```{r message = FALSE}
+```{r message = FALSE, warning = FALSE}
 library(openxlsx)
 library(tidyverse)
 library(scales)
@@ -46,7 +46,7 @@ dataframe_01a <-
   filter(los_mins <= 1440)
 ```
 
-# Step 3 - create a dataframe of bins
+### Step 3 - create a dataframe of bins
 
 Meanwhile, we create a dataframe that contains the upper and lower limits of the bins we want to summarize the raw data into.
 
@@ -56,7 +56,7 @@ dataframe_bins <-
              bin_upper = seq(60, 1440, 60))
 ```
 
-#Step 4 - Do a left_join()
+### Step 4 - Do a left_join()
 
 Having got the 24x2 bins dataframe in place, we can now attempt a left_join() as our first step to creating the frequency table.
 
@@ -68,7 +68,7 @@ dataframe_01b <-
                     los_mins < bin_upper))
 ```
 
-#Step 5 - Now need to group this dataframe...
+### Step 5 - Now need to group this dataframe...
 
 If we now group this dataframe by the bin_upper variable, we should get a neat summary table.
 
@@ -80,7 +80,9 @@ dataframe_01c <-
 ```
 
 
-#Step 6 - draw a histogram using geom_col()
+### Step 6 - draw a histogram using geom_col()
+
+Note that width = 60 ensures that the columns in the geom_col() plot are slap bang next to each other. And I'm using the labels = comma syntax from the {scales} package in order to get comma-separated thousands on the y-axis.
 
 ```{r}
 ggplot(data = dataframe_01c) +
@@ -90,13 +92,13 @@ ggplot(data = dataframe_01c) +
            colour = "white",
            fill = "blue") +
   scale_x_continuous(limits = c(0, 1440),
-                     breaks = seq(60, 1440, 60)) +
+                     breaks = seq(60, 1440, 120)) +
   scale_y_continuous(labels = comma) +
   labs(title = "The Frequency Distribution",
        subtitle = "Anytown General Hospital",
        caption = "Source: Patient Management System",
        x = "Length of stay (minutes)",
        y = element_blank()) +
-  theme_minimal()
+  theme_classic()
 ```
 
