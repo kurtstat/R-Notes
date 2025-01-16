@@ -1,0 +1,122 @@
+---
+title: "group_by() will never work"
+author: "Neil Pettinger"
+date: "2025-01-16"
+output: html_document
+---
+
+### The frequency table problem (continued...)
+The real problem I want to solve here is the problem of bins that contain zero values. I want my summary table to show that there are zero values in that bin, I don't want the bin to just not be there. That's no good. The zero-value-ness of the empty bin is an important piece of data.
+
+And I;ve finally reached the realisation that you cannot therefore use group_by() in a way to get to such a frequency table. The only way you can do it is by specifyn gthe bins ins an empty bin dataframe and then ppulating the bins in turn.
+
+Let's give it a go, I'll have the raw data - which I'll modifiy a bit so that it definitley has empty categories - maybe just do it on the basis of a week;s data.
+
+### Step 0 - install/load the packages
+
+```{r}
+library(openxlsx)
+library(tidyverse)
+library(scales)
+```
+
+
+### Step 1 - import the data
+
+```{r}
+dataframe_01 <-
+  read.xlsx("https://www.kurtosis.co.uk/data/01_ed_data.xlsx") |>  
+  mutate(new_arrival_date_time = convertToDateTime(arrival_date_time)) |> 
+  mutate(new_departure_date_time = convertToDateTime(departure_date_time)) |> 
+  select(patient_id,
+         new_arrival_date_time,
+         new_departure_date_time,
+         adm_ward) |> 
+  filter(new_arrival_date_time >= '2014-09-29 00:00') |> 
+  filter(new_arrival_date_time <= '2014-10-05 23:59')
+```
+
+### Step 2 - create the los_mins variable
+
+```{r}
+dataframe_01a <-
+  dataframe_01 |>
+  mutate(los_mins = as.numeric(difftime(new_departure_date_time,
+                             new_arrival_date_time,
+                             units = "mins"))) |> 
+  filter(los_mins >=0) |> 
+  filter(los_mins <= 1440)
+```
+
+
+### Step 3 - check to see if there are 'missing' values (or empty bins)
+
+```{r}
+dataframe_01b <-
+  dataframe_01a |>
+  mutate(los_cat = cut(los_mins,
+                       breaks = seq(0, 1440, 60),
+                       labels = seq(60, 1440, 60),
+                       include.lowest = TRUE)) |> 
+  arrange(desc(los_mins))
+```
+
+Next:
+
+```{r}
+dataframe_01c <-
+  dataframe_01b |> 
+  group_by(los_cat) |> 
+  summarize(no_of_attendances = n())
+```
+ Yes, there are two empty bins - the 1141-1200 and the 1381-1440 bins
+ 
+ So: to address this, I need to first of all create a dataframe that contains these upper and lower bin values
+ 
+```{r}
+dataframe_bins <-
+  data.frame(bin_lower = seq(0, 1380, 60),
+             bin_upper = seq(60, 1440, 60))
+```
+ 
+And now I need to populatue this datafram directly using a left_join to dataframe_01a
+```{r}
+dataframe_01d <-
+  dataframe_01a |> 
+  left_join(dataframe_bins,
+            join_by(los_mins > bin_lower,
+                    los_mins <= bin_upper)) |> 
+  arrange(los_mins)
+  
+```
+ OK, do a group_by()
+ 
+```{r}
+dataframe_01e <-
+  dataframe_01d |> 
+  group_by(bin_upper) |> 
+  summarize(no_of_attendances = n())
+```
+ And now join this summary table to the dataframe_bins dataframe to get the emtpy bins
+ 
+```{r}
+dataframe_01f <-
+  dataframe_bins |> 
+  left_join(dataframe_01e,
+            join_by(bin_upper == bin_upper)) |> 
+  select(bin_upper,
+         no_of_attendances)
+```
+ 
+Can I draw a bar chart with this daat - even though there are NA values?
+
+```{r}
+ggplot(data = dataframe_01f) +
+  aes(x = bin_upper,
+      y = no_of_attendances) +
+  geom_col() +
+  scale_x_continuous(limits = c(0, 1440),
+                     breaks = seq(60, 1440, 60)) +
+  theme_void()
+```
+
