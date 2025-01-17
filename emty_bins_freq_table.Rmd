@@ -14,7 +14,7 @@ Let's give it a go, I'll have the raw data - which I'll modifiy a bit so that it
 
 ### Step 0 - install/load the packages
 
-```{r}
+```{r message = FALSE, warning = FALSE}
 library(openxlsx)
 library(tidyverse)
 library(scales)
@@ -104,8 +104,12 @@ dataframe_01f <-
   dataframe_bins |> 
   left_join(dataframe_01e,
             join_by(bin_upper == bin_upper)) |> 
+  mutate(new_no_of_attendances = if_else(is.na(no_of_attendances),
+                                         0,
+                                         no_of_attendances)) |> 
   select(bin_upper,
-         no_of_attendances)
+         new_no_of_attendances)
+  
 ```
  
 Can I draw a bar chart with this daat - even though there are NA values?
@@ -113,10 +117,9 @@ Can I draw a bar chart with this daat - even though there are NA values?
 ```{r}
 ggplot(data = dataframe_01f) +
   aes(x = bin_upper,
-      y = no_of_attendances) +
+      y = new_no_of_attendances) +
   geom_col() +
-  scale_x_continuous(limits = c(0, 1440),
-                     breaks = seq(60, 1440, 60)) +
-  theme_void()
+  scale_x_continuous(breaks = seq(60, 1440, 60)) +
+  theme_classic()
 ```
 
