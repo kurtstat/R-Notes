@@ -1,0 +1,161 @@
+---
+title: "The Hiatus Control Chart"
+author: "Neil Pettinger"
+date: "2025-01-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## Step 0 - install/load the packages
+
+I think we'll need the usual suspects...
+
+```{r}
+library(openxlsx)
+library(scales)
+library(tidyverse)
+```
+
+### Step 1 import the data
+
+We'll use the Sep 2014 to Sep 2015 A&E dataset
+
+```{r}
+dataframe_01 <-
+  read.xlsx("https://www.kurtosis.co.uk/data/01_ed_data.xlsx") |>  
+  mutate(new_arrival_date_time = convertToDateTime(arrival_date_time)) |> 
+  mutate(new_departure_date_time = convertToDateTime(departure_date_time)) |> 
+  select(patient_id,
+         new_arrival_date_time,
+         new_departure_date_time,
+         adm_ward)
+```
+
+### Step 2 - create arrival_week and los_mins variables 
+
+```{r}
+dataframe_01a <-
+  dataframe_01 |> 
+  mutate(arrival_week = floor_date(new_arrival_date_time,
+                                   "weeks",
+                                   1),
+         los_mins = difftime(new_departure_date_time,
+                             new_arrival_date_time,
+                             units = "mins"))
+```
+
+### Step 3 - calculate the control chart variables for the first half of the year
+
+```{r}
+dataframe_01b_first <-
+  dataframe_01a |> 
+  filter(arrival_week <= '2015-03-23') |> 
+  group_by(arrival_week) |> 
+  summarize(no_of_attendances = n())
+
+#Calculate the mean and limits
+  first_mean <- mean(dataframe_01b_first$no_of_attendances) 
+  first_mR <- mean(abs(diff(dataframe_01b_first$no_of_attendances))) 
+  first_lcl <- first_mean - 2.66 * the_mR 
+  first_ucl <- first_mean + 2.66 * the_mR
+```
+
+### Step 4 - calculate the control chart variables for the second half of the year
+
+```{r}
+dataframe_01b_second <-
+  dataframe_01a |> 
+  filter(arrival_week > '2015-03-23') |> 
+  group_by(arrival_week) |> 
+  summarize(no_of_attendances = n())
+
+#Calculate the mean and limits
+  second_mean <- mean(dataframe_01b_second$no_of_attendances) 
+  second_mR <- mean(abs(diff(dataframe_01b_second$no_of_attendances))) 
+  second_lcl <- second_mean - 2.66 * the_mR 
+  second_ucl <- second_mean + 2.66 * the_mR
+```
+
+### Step 5 - attempt the whole thing
+
+```{r}
+dataframe_01c <-
+  dataframe_01b |> 
+  mutate(first_activity_line = if_else(arrival_week <= '2015-03-23',
+                             no_of_attendances,
+                             NA)) |> 
+  mutate(second_activity_line = if_else(arrival_week > '2015-03-23',
+                             no_of_attendances,
+                             NA)) |> 
+  mutate(first_mean_line = if_else(arrival_week <= '2015-03-23',
+                             first_mean,
+                             NA)) |> 
+  mutate(second_mean_line = if_else(arrival_week > '2015-03-23',
+                             second_mean,
+                             NA)) |> 
+  mutate(first_lcl_line = if_else(arrival_week <= '2015-03-23',
+                             first_lcl,
+                             NA)) |> 
+  mutate(second_lcl_line = if_else(arrival_week > '2015-03-23',
+                             second_lcl,
+                             NA)) |> 
+  mutate(first_ucl_line = if_else(arrival_week <= '2015-03-23',
+                             first_ucl,
+                             NA)) |> 
+  mutate(second_ucl_line = if_else(arrival_week > '2015-03-23',
+                             second_ucl,
+                             NA))
+```
+
+### Step 6 - plot the graph
+
+```{r warning = FALSE}
+ggplot(data = dataframe_01c) +
+  geom_point(aes(x = arrival_week,
+                 y = first_activity_line)) +
+  geom_point(aes(x = arrival_week,
+                 y = second_activity_line)) +
+  geom_line(aes(x = arrival_week,
+                y = first_activity_line)) +
+  geom_line(aes(x = arrival_week,
+                y = second_activity_line)) +
+  geom_line(aes(x = arrival_week,
+                y = first_mean_line)) +
+  geom_line(aes(x = arrival_week,
+                y = second_mean_line)) +
+  geom_line(aes(x = arrival_week,
+                y = first_lcl_line),
+            linetype = "dashed") +
+  geom_line(aes(x = arrival_week,
+                y = second_lcl_line),
+            linetype = "dashed") +
+  geom_line(aes(x = arrival_week,
+                y = first_ucl_line),
+            linetype = "dashed") +
+  geom_line(aes(x = arrival_week,
+                y = second_ucl_line),
+            linetype = "dashed") +
+  geom_ribbon(aes(arrival_week, 
+                  ymax=`second_ucl_line`, ymin=`second_lcl_line`), 
+              fill="green", 
+              alpha=0.25) +
+  geom_vline(xintercept = as.POSIXct('2015-03-26 12:00'),
+             colour = "grey") +
+  scale_y_continuous(limits = c(0, 1400),
+                     breaks = seq(0, 1400, 200),
+                     labels = comma) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line.x = element_line(color="grey"),
+        axis.line.y = element_line(color="grey"),) +
+  labs(title = "The Green Zone",
+         subtitle = "Attendances per week in a year of two halves",
+         x = element_blank(),
+         y = element_blank())
+  
+```
+
