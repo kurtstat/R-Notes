@@ -1,0 +1,65 @@
+---
+title: "AALOEB coloured in"
+author: "Neil Pettinger"
+date: "2025-01-20"
+output: html_document
+---
+### That jagged line diagram but in colour
+
+### Step 0 - install/load packages
+
+```{r}
+library(tidyverse)
+library(readxl)
+```
+### Step 1 - import the data
+
+```{r}
+dataframe_01 <-
+  read_xlsx("data/gm_mean_occ_beds.xlsx")
+  
+```
+
+### Step 2 - add a variable with the bed allocation
+
+```{r}
+dataframe_01a <-
+  dataframe_01 |> 
+  mutate(bed_allocation = 55) |> 
+  mutate(lower = if_else(mean_occupied_beds < bed_allocation,
+                         mean_occupied_beds,
+                         NA)) |> 
+  mutate(higher = if_else(mean_occupied_beds >= bed_allocation,
+                         mean_occupied_beds,
+                         NA))
+```
+ 
+### Step 3 - draw a line graph
+
+```{r}
+ggplot(data = dataframe_01a) + 
+  geom_line(aes(x = date,
+                y = mean_occupied_beds),
+            colour = "grey") +
+  geom_line(aes(x = date,
+                y = bed_allocation)) +
+  geom_ribbon(aes(x = date,
+                  ymin = lower,
+                  ymax = bed_allocation),
+              fill = "green",
+              alpha = 0.25) +
+  geom_ribbon(aes(x = date,
+                  ymin = bed_allocation,
+                  ymax = higher),
+              fill = "red",
+              alpha = 0.25) +
+  scale_y_continuous(limits = c(0, 70),
+                     breaks = seq(0, 70, 10)) +
+  labs(title = "Always At Least One Empty Bed",
+       subtitle = "Anytown General Hospital | General Medicine | Apr to Sep 2024",
+       x = element_blank(),
+       y = element_blank()) +
+  theme(panel.grid = element_blank(),
+        panel.background = element_rect(fill = "white"))
+```
+
