@@ -1,0 +1,131 @@
+---
+title: "Ward Map Possibilities"
+author: "Neil Pettinger"
+date: "2025-01-24"
+output: html_document
+---
+
+```{r setup, include=FALSE, message = FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Trying to match LoS histogram to different levels of fullness
+
+### Step 0 - load the packages
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(janitor)
+library(magick)
+```
+
+
+### Step 1 - import the data
+
+```{r}
+dataframe_01 <-
+  read_xlsx("data/gm_duration_extract.xlsx")
+```
+
+### Step 2 - create an 8784 dataframe
+
+```{r}
+
+dataframe_8784 <-
+  data.frame(date_hour = seq(as.POSIXct("2023-04-01 00:01"),
+                             as.POSIXct("2024-03-31 23:01"),
+                             60*60))
+```
+
+### Step 3 - create the 8784 time series table
+
+```{r}
+dataframe_01a <-
+  dataframe_8784 |> 
+  inner_join(dataframe_01,
+            join_by(date_hour >= START_DATE,
+                    date_hour < END_DATE)) |> 
+  group_by(date_hour) |> 
+  summarize(no_of_occupied_beds = n()) |> 
+  mutate(new_date = floor_date(date_hour,
+                               "days")) |> 
+  group_by(new_date) |> 
+  summarize(min_occ_beds = min(no_of_occupied_beds),
+            max_occ_beds = max(no_of_occupied_beds)) |> 
+  mutate(bed_alloc = 55) |> 
+  mutate(red_min = if_else(min_occ_beds > bed_alloc, min_occ_beds, NA)) |> 
+  mutate(red_max = if_else(min_occ_beds > bed_alloc, max_occ_beds, NA)) |> 
+  mutate(green_min = if_else(max_occ_beds < bed_alloc, min_occ_beds, NA)) |> 
+  mutate(green_max = if_else(max_occ_beds < bed_alloc, max_occ_beds, NA))
+```
+
+
+### Step 4 - draw a series of 366 vertical min_max lines
+
+```{r}
+plot_peak_trough <-
+  ggplot(data = dataframe_01a) +
+  geom_linerange(aes(x = new_date,
+                    ymin = min_occ_beds, 
+                    ymax = max_occ_beds),
+                 colour = "darkgrey",
+                 linewidth = 0.3) +
+  geom_linerange(aes(x = new_date,
+                    ymin = red_min, 
+                    ymax = red_max),
+                 colour = "red",
+                 linewidth = 0.3) +
+  geom_linerange(aes(x = new_date,
+                    ymin = green_min, 
+                    ymax = green_max),
+                 colour = "darkgreen",
+                 linewidth = 0.3) +
+  geom_line(aes(x = new_date,
+                y = bed_alloc)) +
+  scale_y_continuous(limits = c(45, 80),
+                     breaks = seq(45, 80, 5)) +
+  labs(title = "The Daily Peaks and Troughs of Bed Occupancy",
+       subtitle = "Daily max and min of beds occupied by General Medicine inpatients | 2023-24",
+       x = element_blank(),
+       y = element_blank()) +
+  theme_bw() +
+  theme(axis.line = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank()) 
+
+```
+next
+
+```{r}
+ggsave(plot_peak_trough, 
+       filename = "plot_peak_trough.png",
+       height = 9, width = 16, units = "cm")
+```
+
+get an ordered 8784 list
+
+```{r}
+dataframe_01b <-
+  dataframe_8784 |> 
+  inner_join(dataframe_01,
+            join_by(date_hour >= START_DATE,
+                    date_hour < END_DATE)) |> 
+  group_by(date_hour) |> 
+  summarize(no_of_occupied_beds = n()) |>
+  arrange(desc(no_of_occupied_beds))
+```
+
+find out which wards at 18:01 on 13th Oct
+```{r}
+dataframe_summary_min <-
+  dataframe_01 |> 
+  filter(START_DATE <= '2023-10-13 18:01') |> 
+  filter(END_DATE > '2023-10-13 18:01') |> 
+  group_by(WARD_CODE) |> 
+  summarize(no_of_occupied_beds = n())
+```
+
+
