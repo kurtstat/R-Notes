@@ -1,0 +1,59 @@
+---
+title: "Hospital Ward Map (HWM)"
+author: "Neil Pettinger"
+date: "2025-01-26"
+output: html_document
+---
+
+```{r setup, include=FALSE, message= FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo =FALSE)
+```
+
+### Introduction
+I'm going to try and create the hospital ward map using geom_point(). Wish me luck.
+
+### Step 0 - load the packages
+
+```{r}
+library(tidyverse)
+library(readxl)
+```
+
+#Step 1 - import the data
+
+```{r}
+df_snapshot <-
+    read_xlsx("data/hwm_sketchbook_01.xlsx",
+              "df_snapshot")
+df_map <-
+    read_xlsx("data/hwm_sketchbook_01.xlsx",
+              "df_map")
+```
+
+
+### Step 2 - use left_join() to get the x-y co-ordinates from map to snapshot
+
+```{r}
+df_snapshot_01 <-
+  df_snapshot |> 
+  left_join(df_map,
+            join_by(ward == ward,
+                    snapshot_ward_seqno == map_ward_seqno))
+```
+
+### Step 3 - create a map using geom_point()
+
+```{r}
+ggplot(data = df_snapshot_01) +
+  aes(x = x,
+      y = y) +
+  geom_point(shape = 15,
+             size = 1,
+             colour = "blue") +
+  scale_x_continuous(limits = c(0, 100),
+                     breaks = seq(0, 100, 10)) +
+  scale_y_continuous(limits = c(0, 50),
+                     breaks = seq(0, 50, 10))
+  
+```
+
