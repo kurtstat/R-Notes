@@ -56,34 +56,38 @@ green_mean = bed_allocation - (green_lcl / 2)
 
 # Step 5 - create the summary table for the control chart -----------------
 
-dataframe_01c <-
-  dataframe_01b |> 
+dataframe_01b <-
+  dataframe_01a |> 
   mutate(lcl = lcl) |> 
   mutate(ucl = ucl)
 
 
 # Step 6 - draw the control chart -----------------------------------------
 
-ggplot(data = dataframe_01c) +
+ggplot(data = dataframe_01b) +
   aes(x = new_week) +
-  geom_line(aes(y = new_mean_occupied_beds)) +
-  geom_point(aes(y = new_mean_occupied_beds)) +
-  geom_line(aes(y = overall_mean)) +
-  geom_line(aes(y = lcl),
-            linetype = "dashed") +
-  geom_line(aes(y = ucl),
-            linetype = "dashed") +
+  #geom_line(aes(y = lcl),
+            #linetype = "dashed") +
+  #geom_line(aes(y = ucl),
+            #linetype = "dashed") +
+  #geom_ribbon(aes(ymax=`ucl`,
+                  #ymin=`lcl`), 
+              #fill="grey", 
+              #alpha=0.25) +
   geom_ribbon(aes(ymax=`bed_allocation`,
                   ymin=`green_lcl`), 
-              fill="green", 
-              alpha=0.25) +
+              fill="darkgreen", 
+              alpha=0.1) +
+  geom_line(aes(y = new_mean_occupied_beds)) +
+  geom_point(aes(y = new_mean_occupied_beds)) +
+  #geom_line(aes(y = overall_mean)) +
   geom_line(aes(y = green_mean),
             colour = "darkgreen") +
   geom_line(aes(y = green_lcl),
-            colour = "green",
+            colour = "darkgreen",
             linetype = "dashed") +
   geom_line(aes(y = bed_allocation),
-            colour = "green",
+            colour = "darkgreen",
             linetype = "dashed") +
   scale_y_continuous(limits = c(0, 80),
                      breaks = seq(0, 80, 10)) +
@@ -91,9 +95,9 @@ ggplot(data = dataframe_01c) +
         panel.grid.minor = element_blank(),
         panel.background = element_blank(),
         axis.line.x = element_line(color="grey"),
-        axis.line.y = element_line(color="grey"),) +
-  labs(title = "Barely even touching the Green Zone",
-       subtitle = "Average no. of beds occupied per week for a 55-bed specialty",
+        axis.line.y = element_line(color="grey"),
+        plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm")) +
+  labs(title = "Average no. of occupied beds per week",
+       subtitle = "Anytown General Hospital | General Medicine (bed allocation = 55)",
        x = element_blank(),
        y = element_blank())
-  
