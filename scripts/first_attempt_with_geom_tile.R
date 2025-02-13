@@ -55,7 +55,7 @@ plot_ward_6 <-
   coord_fixed() + 
   theme_void() +
   theme(legend.position = "none") +
-  labs(title = "Ward 6 (25 beds)") +
+  labs(title = "Ward 6 (20 beds)") +
   theme(plot.title = element_text(hjust = 0.08,
                                   vjust = -1))
 
@@ -63,3 +63,4 @@ plot_grid(plot_ward_5,
           plot_ward_6,
           rel_heights = c(1,1), 
           ncol = 2)
+
