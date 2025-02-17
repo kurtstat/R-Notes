@@ -31,9 +31,9 @@ df_01_new <-
 # Step 2 - Create a duplicate dataframe -----------------------------------
 
 df_01_copy <-
-  read_xlsx("data/ari_ward_duration_extract_2023_24.xlsx") |> 
+  df_01_new |> 
   rename(copy_seq_no = seq_no,
-         copy_specialty_code = specialty_code,
+         copy_new_specialty_code = new_specialty_code,
          copy_ward_code = ward_code,
          copy_start_datetime = start_datetime,
          copy_end_datetime = end_datetime)
@@ -42,24 +42,39 @@ df_01_copy <-
 # Step 3 - Use anti_join() to get unique admissions -----------------------
 
 df_01a <-
-  df_01 |> 
+  df_01_new |> 
   anti_join(df_01_copy,
             join_by(start_datetime == copy_end_datetime))
 
 
-# Step 4 - append second ward stay to df_01a ------------------------------
+# Step 4 - append second ward stay end_datetime to df_01a -----------------
 
 df_01b <-
   df_01a |> 
   left_join(df_01_copy,
             relationship = "many-to-many",
             join_by(end_datetime == copy_start_datetime,
-                    specialty_code == copy_specialty_code)) |>
+                    new_specialty_code == copy_new_specialty_code)) |>
   select(seq_no,
-       specialty_code,
+       new_specialty_code,
        ward_code,
        start_datetime,
+       end_datetime,
        copy_end_datetime)
-  
-  
-  
+
+
+# Step 5 - append third ward stay end_datetime to df_01a ------------------
+
+df_01c <-
+  df_01b |> 
+  left_join(df_01_copy,
+            relationship = "many-to-many",
+            join_by(copy_end_datetime == copy_start_datetime,
+                    new_specialty_code == copy_new_specialty_code)) |>
+  select(seq_no,
+         new_specialty_code,
+         ward_code,
+         start_datetime,
+         end_datetime,
+         copy_end_datetime)
+
