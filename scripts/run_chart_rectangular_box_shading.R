@@ -19,7 +19,7 @@ df_run_chart_data <-
   mutate(median = median(percent_discharged_home))
 
 
-# Step 1a - create the run_table markers ---------------------------
+# Step 2 - create the run_table markers ---------------------------
 
 df_run_chart_data_a <-
   df_run_chart_data |>
@@ -30,18 +30,18 @@ df_run_chart_data_a <-
                                     percent_discharged_home == median ~ "on")) |> 
   mutate(point_no = row_number()) |> 
   mutate(previous = lag(above_below_on)) |> 
-  mutate(first_point = case_when(is.na(previous) ~ point_no,
+  mutate(first_point_no = case_when(is.na(previous) ~ point_no,
                                  above_below_on!= previous ~ point_no, 
                                  above_below_on == previous ~ NA)) |> 
-  fill(first_point)
+  fill(first_point_no)
   
 
 
-# Step 1c - create the (summarized) run table -----------------------------
+# Step 3 - create the (summarized) run table -----------------------------
 
 df_run_chart_table <-
   df_run_chart_data_a |> 
-  group_by(first_point) |> 
+  group_by(first_point_no) |> 
   summarize(no_of_points = n(),
             median = median(median),
             min_week = min(discharge_week) - (3.5*24*60*60),
@@ -49,18 +49,16 @@ df_run_chart_table <-
             min_percent = min(percent_discharged_home,
                               median),
             max_percent = max(percent_discharged_home,
-                              median))
-df_run_chart_table_a <-
-  df_run_chart_table |> 
+                              median)) |> 
   mutate(rule_break = if_else(no_of_points >= 6,
                               "rule_break",
                               "nothing_to_see"))
 
 
-# Step 2 - draw the run chart ---------------------------------------------
+# Step 4 - draw the run chart ---------------------------------------------
 
 ggplot(data = df_run_chart_data_a) +
-  geom_rect (data = df_run_chart_table_a,
+  geom_rect (data = df_run_chart_table,
              aes(xmin = min_week,
                  xmax = max_week,
                  ymin = min_percent,
@@ -73,7 +71,7 @@ ggplot(data = df_run_chart_data_a) +
                  y = percent_discharged_home)) +
   geom_line(aes(x = discharge_week,
                 y = median),
-            size = 0.5) +
+            linewidth = 0.5) +
   scale_fill_manual(values = c("lightgrey", "#FF6600")) +
   scale_y_continuous(limits = c(0.15, 0.45),
                      breaks = seq(0.15, 0.45, 0.05),
