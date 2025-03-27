@@ -42,23 +42,33 @@ ggplot(data = df_03) +
       y = amu_arrival_time) +
   geom_point(size = 0.7,
              colour = "red") +
-  geom_vline(xintercept = as.POSIXct('2021-11-30')) +
+  geom_vline(xintercept = as.POSIXct('2021-11-30'),
+             linewidth = 0.8,
+             linetype = "dashed",
+             colour = "black") +
   scale_y_reverse(labels = function(x) hms::as_hms(x),
                   breaks = seq(as.numeric(hms::as_hms("00:00:00")), 
                                as.numeric(hms::as_hms("24:00:00")),
                                21600),
                   position = "right") +
   scale_x_datetime(limits = c(as.POSIXct('2019-04-01'),
-                          as.POSIXct('2024-03-31')),
-                   breaks = "year",
-                   labels = date_format("%Y"),
+                          as.POSIXct('2024-04-01')),
+                   breaks = "12 month",
+                   labels = date_format("%b-%y"),
                    expand = c(0, 0)) +
-  labs(title = "Did Elon Musk buy AMU in October 2021?",
-       subtitle = "Patients spending longer than a week in the AMU",
+  labs(title = "What happened in December 2021?",
+       subtitle = "Patients spending longer than a week in the Acute Medical Unit",
        x= NULL,
-       y = NULL) +
-  theme(panel.grid.major.x = element_blank(),
+       y = NULL,
+       caption = "Source: Patient Management System") +
+  theme(axis.line.x = element_line(),
+        axis.ticks.x = element_line(),
+        axis.ticks.length = unit(.25, "cm"),
+        panel.grid.major.x = element_blank(),
         panel.grid.minor.x = element_blank(),
         panel.grid.minor.y = element_blank(),
-        plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"))
+        panel.background = element_rect(fill = '#FFFFFF', colour = '#FFFFFF'),
+        plot.background = element_rect(fill = '#FFFFFF', colour = '#FFFFFF'),
+        plot.caption = element_text(hjust = 0),
+        plot.margin = unit(c(0.5, 0.5, 0.5, 1), "cm"))
                   
