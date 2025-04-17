@@ -36,8 +36,6 @@ ggplot(data = df_02) +
   geom_point(size = 0.01,
              colour = "red",
              alpha = 0.3) +
-  #geom_vline(xintercept = as.POSIXct('2021-11-30')) +
-  #scale_y_reverse(labels = function(x) hms::as_hms(x),
   scale_y_reverse(labels = function(x) substring(format(hms::hms(x),"%H:%M"),1,5),
                   breaks = seq(as.numeric(hms::as_hms("00:00:00")),
                                as.numeric(hms::as_hms("24:00:00")),
